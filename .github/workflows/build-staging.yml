@@ -12,7 +12,9 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Decode .env file and set as environment variables
-        run: echo "${{ secrets.ENV_STAGING }}" | base64 -d > .env
+        run: |
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > encoded.env
+          base64 -d encoded.env > .env
 
       - name: Login to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
