@@ -1,0 +1,24 @@
+name: Build and Push Staging to Docker Hub
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Decode .env file and set as environment variables
+        run: echo "${{ secrets.ENV_STAGING }}" | base64 -d > .env
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t mhari16/books-api:latest .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push mhari16/books-api:latest
