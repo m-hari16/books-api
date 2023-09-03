@@ -16,13 +16,9 @@ jobs:
           echo "${{ secrets.ENV_FILE_CONTENT }}" > encoded.env
           base64 -d encoded.env > .env
 
-      - name: Get the current image tag
-        id: get-current-tag
-        run: echo "CURRENT_IMAGE_TAG=$(echo ${{ vars.CURRENT_IMAGE_TAG }})" >> $GITHUB_ENV
-
-      - name: Increment the image tag
+      - name: Get the current image tag & increment
         run: |
-          current_tag="${CURRENT_IMAGE_TAG}"
+          current_tag="${{ vars.CURRENT_IMAGE_TAG }}"
           IFS='.' read -ra tag_parts <<< "$current_tag"
           tag_parts[2]=$((tag_parts[2]+1))
           new_tag="${tag_parts[0]}.${tag_parts[1]}.${tag_parts[2]}"
