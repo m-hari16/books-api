@@ -56,8 +56,25 @@ async function getBooks(req, res) {
   }
 }
 
+async function getAsset(req, res) {
+  try {
+    const imageId = req.params.imageId;
+
+    const url = await defaultBucket.file(imageId).getSignedUrl({
+      action: 'read',
+      expires: Date.now() + 30 * 60 * 1000
+    })
+
+    res.redirect(url)    
+    
+  } catch (error) {
+    errorHandler(error, res);
+  }
+}
+
 module.exports = {
   createBook,
   uploadImage,
   getBooks,
+  getAsset
 };
