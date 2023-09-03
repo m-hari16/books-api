@@ -4,14 +4,14 @@ const { books } = require('../models');
 
 async function createBook(req, res) {
   try {
-    const { title, description, price, imageUrl } = req.body;
+    const { title, description, price, imageId } = req.body;
 
     // Save the book data to the PostgreSQL database
     const book = await books.create({
       title,
       description,
       price,
-      imageUrl
+      imageId
     });
 
     return res.status(201).json({ message: 'Book created successfully', book });
@@ -34,10 +34,11 @@ async function uploadImage(req, res) {
       metadata: { contentType: req.file.mimetype },
     });
 
-    const imageUrl = file.metadata.mediaLink;
+    const imageUrl = file.metadata.id;
+    const imageId = imageUrl.split('/')[1]
     const contentType = file.metadata.contentType;
     
-    return res.status(201).json({ imageUrl, contentType });
+    return res.status(201).json({ imageId, contentType });
   } catch (error) {
     errorHandler(error, res);
   }
@@ -46,7 +47,7 @@ async function uploadImage(req, res) {
 async function getBooks(req, res) {
   try {
     const book = await books.findAll({
-      attributes: ['id', 'title', 'description', 'price', 'imageUrl', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'title', 'description', 'price', 'imageId', 'createdAt', 'updatedAt'],
     });
 
     return res.status(200).json(book);
