@@ -26,12 +26,10 @@ jobs:
         run: |
           commit_message=$(git log --format=%B -n 1 ${{ github.sha }})
 
-          if [[ $commit_message == *"[feat!]:"* ]]; then
+          if [[ $commit_message == *"feat!:"* ]]; then
             increment="x"
-          elif [[ $commit_message == *"[feat]:"* ]]; then
+          elif [[ $commit_message == *"feat:"* ]]; then
             increment="y"
-          elif [[ $commit_message == *"[fix]:"* ]]; then
-            increment="z"
           else
             increment="z" # Default to incrementing the patch version for other commits
           fi
