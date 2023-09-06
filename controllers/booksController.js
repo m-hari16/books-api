@@ -72,9 +72,23 @@ async function getAsset(req, res) {
   }
 }
 
+async function detail(req, res) {
+  try {
+    const book = await books.findById(req.params.id, {
+      attributes: ['id', 'title', 'description', 'price', 'imageId', 'createdAt', 'updatedAt']
+    });
+
+    return res.status(200).json(book);
+
+  } catch (error) {
+    errorHandler(error, res)
+  }
+}
+
 module.exports = {
   createBook,
   uploadImage,
   getBooks,
-  getAsset
+  getAsset,
+  detail
 };

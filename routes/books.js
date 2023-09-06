@@ -11,5 +11,6 @@ router.post('/book', apiKeyAuth, validateFields, booksController.createBook);
 router.post('/upload', apiKeyAuth, upload.single('image'), booksController.uploadImage);
 router.get('/books', apiKeyAuth, booksController.getBooks);
 router.get('/asset/:imageId', apiKeyAuth, booksController.getAsset);
+router.get('/book/:id', apiKeyAuth, booksController.detail);
 
 module.exports = router;
