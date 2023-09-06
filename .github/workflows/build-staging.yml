@@ -13,23 +13,54 @@ jobs:
 
       - name: Decode .env file and set as environment variables
         run: |
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > encoded.env
+          echo "${{ secrets.ENV_STAGING }}" > encoded.env
           base64 -d encoded.env > .env
 
-      - name: Get the current image tag & increment
+      - name: Get latest image version from API
         run: |
-          current_tag="${{ secrets.CURRENT_IMAGE_TAG }}"
-          IFS='.' read -ra tag_parts <<< "$current_tag"
-          tag_parts[2]=$((tag_parts[2]+1))
-          new_tag="${tag_parts[0]}.${tag_parts[1]}.${tag_parts[2]}"
-          echo "New tag: $new_tag"
-          echo "CURRENT_IMAGE_TAG=$new_tag" >> $GITHUB_ENV
+          latest_version=$(curl -s https://internal-tools.cexup.com/tools/v1/version-app/apiBooks)
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
+
+      - name: Determine Version Increment
+        id: determine-version
+        run: |
+          commit_message=$(git log --format=%B -n 1 ${{ github.sha }})
+
+          if [[ $commit_message == *"[feat!]:"* ]]; then
+            increment="x"
+          elif [[ $commit_message == *"[feat]:"* ]]; then
+            increment="y"
+          elif [[ $commit_message == *"[fix]:"* ]]; then
+            increment="z"
+          else
+            increment="z" # Default to incrementing the patch version for other commits
+          fi
+
+          latest_version="${{ env.LATEST_VERSION }}"
+          IFS='.' read -ra version_parts <<< "$latest_version"
+
+          if [[ "$increment" == "x" ]]; then
+            version_parts[0]=$((version_parts[0]+1))
+          elif [[ "$increment" == "y" ]]; then
+            version_parts[1]=$((version_parts[1]+1))
+          elif [[ "$increment" == "z" ]]; then
+            version_parts[2]=$((version_parts[2]+1))
+          fi
+
+          new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+        shell: bash
 
       - name: Login to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
-        run: docker build -t mhari16/books-api:${{ env.CURRENT_IMAGE_TAG }} .
+        run: docker build -t mhari16/books-api:${{ env.NEW_VERSION }} .
 
       - name: Push Docker image to Docker Hub
-        run: docker push mhari16/books-api:${{ env.CURRENT_IMAGE_TAG }}
+        run: docker push mhari16/books-api:${{ env.NEW_VERSION }}
+
+      - name: Update latest image version to API
+        run: |
+          new_version="${{ env.NEW_VERSION }}"
+          curl -X PUT -H "Content-Type: application/json" -d "{\"value\":\"$new_version\"}" "https://internal-tools.cexup.com/tools/v1/version-app/apiBooks"
