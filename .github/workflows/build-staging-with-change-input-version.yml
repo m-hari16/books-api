@@ -1,0 +1,81 @@
+name: Build and Push Staging With Input Version to Docker Hub
+
+on:
+  workflow_dispatch:
+      inputs:
+        release_version:
+          description: 'Release Version (major, minor, patch)'
+          required: true
+          options: ['major', 'minor', 'patch']
+          default: 'patch'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Decode .env file and set as environment variables
+        run: |
+          echo "${{ secrets.ENV_STAGING }}" > encoded.env
+          base64 -d encoded.env > .env
+
+      - name: Get latest image version from API
+        run: |
+          latest_version=$(curl -s https://internal-tools.cexup.com/tools/v1/version-app/apiBooks)
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
+
+      - name: Determine Version Increment
+        id: determine-version
+        run: |
+          release_version="${{ github.event.inputs.release_version }}"
+
+          case $release_version in
+            "major")
+              increment="x"
+              ;;
+            "minor")
+              increment="y"
+              ;;
+            "patch")
+              increment="z"
+              ;;
+            *)
+              echo "Invalid release_version: $release_version"
+              exit 1
+              ;;
+          esac
+
+          latest_version="${{ env.LATEST_VERSION }}"
+          IFS='.' read -ra version_parts <<< "$latest_version"
+
+          if [[ "$increment" == "x" ]]; then
+            version_parts[0]=$((version_parts[0]+1))
+            version_parts[1]=0
+            version_parts[2]=0
+          elif [[ "$increment" == "y" ]]; then
+            version_parts[1]=$((version_parts[1]+1))
+            version_parts[2]=0
+          elif [[ "$increment" == "z" ]]; then
+            version_parts[2]=$((version_parts[2]+1))
+          fi
+
+          new_version="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t mhari16/books-api:${{ env.NEW_VERSION }} .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push mhari16/books-api:${{ env.NEW_VERSION }}
+
+      - name: Update latest image version to API
+        run: |
+          new_version="${{ env.NEW_VERSION }}"
+          curl -X PUT -H "Content-Type: application/json" -d "{\"value\":\"$new_version\"}" "https://internal-tools.cexup.com/tools/v1/version-app/apiBooks"
